@@ -1,12 +1,7 @@
 //@version=5
-strategy('Sumit MACD with Supertrend with VWAP', overlay=true)
-
-LicenseID = 111 // 1. change to your PineConnector License ID (required) 
+strategy('Sumit backtest MACD with Supertrend with VWAP', overlay=true)
 
 [supertrend, direction] = ta.supertrend(2, 20)
-
-//longCondition = ta.crossover(ta.ema(close,20),ta.ema(close,50))
-//shortCondition = ta.crossunder(ta.ema(close,20),ta.ema(close,50))
 
 bodyMiddle = plot((open + close) / 2, display=display.none)
 upTrend = plot(direction < 0 ? supertrend : na, 'Up Trend', color=color.new(color.green, 0), style=plot.style_linebr)
@@ -14,9 +9,6 @@ downTrend = plot(direction < 0 ? na : supertrend, 'Down Trend', color=color.new(
 
 fill(bodyMiddle, upTrend, color.new(color.green, 90), fillgaps=false)
 fill(bodyMiddle, downTrend, color.new(color.red, 90), fillgaps=false)
-
-//plotshape(ta.change(direction) < 0, style=shape.labelup, location=location.belowbar, color=color.new(#0bdb3f, 0), size=size.small, text='Supertrend Buy', textcolor=color.new(color.white, 0))
-//plotshape(ta.change(direction) > 0, style=shape.labeldown, location=location.abovebar, color=color.new(#ec4141, 0), size=size.small, text='Supertrend Sell', textcolor=color.new(color.white, 0))
 
 fastLength = input(12)
 slowlength = input(26)
@@ -27,15 +19,38 @@ delta = MACD - aMACD
 
 ema20 = ta.ema(close,20)
 plot(ema20)
-//MACD long = ta.crossover(delta, 0)
-//MACD short = ta.crossunder(delta, 0) 
-//averageData = input.source(close, title="Average Data Source")
 vwap = ta.vwap(hlc3)
 plot(vwap, color = #c0f013, linewidth = 3)
 
 long =  ta.change(direction) < 0 and MACD > aMACD and vwap > open 
 short = ta.change(direction) > 0 and MACD < aMACD and vwap < open
 
-plotshape(long, style=shape.labelup, location=location.belowbar, color=color.new(#0ef80e, 0), size=size.small, text='Buy', textcolor=color.new(color.white, 0))      //plotting up arrow when buy/long conditions met 
-plotshape(short, style=shape.labeldown, location=location.abovebar, color=color.new(#cc1313, 0), size=size.small, text='Sell', textcolor=color.new(color.white, 0))  //plotting down arrow when sell/short conditions met
+plotshape(long, style=shape.labelup, location=location.belowbar, color=color.new(#0ef80e, 0), size=size.small, text='Buy', textcolor=color.new(color.white, 0)) 
+plotshape(short, style=shape.labeldown, location=location.abovebar, color=color.new(#cc1313, 0), size=size.small, text='Sell', textcolor=color.new(color.white, 0))
 
+// Chart Properties
+testStartYear = input(2018, 'Backtest Start Year')
+testStartMonth = input(01, 'Backtest Start Month')
+testStartDay = input(1, 'Backtest Start Day')
+testPeriodStart = timestamp(testStartYear, testStartMonth, testStartDay, 0, 0)
+
+testStopYear = input(2030, 'Backtest Stop Year')
+testStopMonth = input(12, 'Backtest Stop Month')
+testStopDay = input(30, 'Backtest Stop Day')
+testPeriodStop = timestamp(testStopYear, testStopMonth, testStopDay, 0, 0)
+
+// A switch to control background coloring of the test period
+testPeriodBackground = input(title='Color Background?', defval=true)
+testPeriodBackgroundColor = testPeriodBackground and time >= testPeriodStart and time <= testPeriodStop ? #6c6f6c : na
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop ? true : false
+
+if long and testPeriod()
+    strategy.entry(id='long', direction=strategy.long, qty=100)
+
+strategy.close(id='long', comment='long close', when=ta.change(direction) > 0)
+if short and testPeriod()
+    strategy.entry(id='short', direction=strategy.short, qty=100)
+
+strategy.close(id='short', comment='short close', when=ta.change(direction) < 0)
