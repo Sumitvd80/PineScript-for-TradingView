@@ -1,0 +1,32 @@
+//@version=5
+ strategy(title='intraday Strategy by PRT', overlay=true)
+
+st_up = ta.highest(high, 10) + (ta.atr(10) * 3)
+st_down = ta.lowest(low, 10) - (ta.atr(10) * 3)
+
+// MACD
+fast_ema = ta.ema(close, 12)
+slow_ema = ta.ema(close, 26)
+ta.macd(close,12,26,9)
+ta.ema(ta.macd(close,12,26,9), 9)
+
+// VWAP
+vwap = ta.vwap(high,low)
+
+// SuperTrend & MACD crossover
+st_cross = ta.crossover(close, st_up)
+macd_cross = ta.crossover(ta.macd(close,12,26,9), ta.ema(ta.macd(close,12,26,9), 9))
+
+// Plot the indicators
+
+plot(vwap, color = #c0f013, linewidth = 2)
+plot(macd, color = #ffa500, linewidth = 2)
+plot(signal, color = #ffa500, linewidth = 2)
+
+// Buy and Sell signals
+buy = st_cross and macd_cross
+sell = nz(buy[1]) and not buy
+
+// Plot the buy and sell signals
+plotshape(buy, "BUY", location = location.belowbar, color = #00ff1e, style = shape.arrowup, size = size.small)
+plotshape(sell, "SELL", location = location.abovebar, color = #ff0000, style = shape.arrowdown, size = size.small)
