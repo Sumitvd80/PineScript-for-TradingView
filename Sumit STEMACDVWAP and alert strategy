@@ -1,0 +1,76 @@
+//@version=5
+strategy('Sumit backtest and alert strategy', overlay=true)
+
+[supertrend, direction] = ta.supertrend(1, 7)
+
+bodyMiddle = plot((open + close) / 2, display=display.none)
+upTrend = plot(direction < 0 ? supertrend : na, 'Up Trend', color=color.new(color.green, 0), style=plot.style_linebr)
+downTrend = plot(direction < 0 ? na : supertrend, 'Down Trend', color=color.new(color.red, 0), style=plot.style_linebr)
+fill(bodyMiddle, upTrend, color.new(color.green, 90), fillgaps=false)
+fill(bodyMiddle, downTrend, color.new(color.red, 90), fillgaps=false)
+
+fastLength = input(12)
+slowlength = input(26)
+MACDLength = input(9)
+MACD = ta.ema(close, fastLength) - ta.ema(close, slowlength)
+aMACD = ta.ema(MACD, MACDLength)
+delta = MACD - aMACD
+
+ema20 = ta.ema(close,20)
+//plot(ema20)
+vwap = ta.vwap(hlc3)
+plot(vwap, color = #ad05b0, linewidth = 2)
+
+long =  ta.change(direction) < 0  and MACD > aMACD and vwap < open and ema20 < open
+short = ta.change(direction) > 0  and MACD < aMACD and vwap > close and ema20 > close
+closelong = ta.change(direction) > 0
+closeshort= ta.change(direction) < 0
+
+
+//long =  ta.change(direction) < 0 
+//short = ta.change(direction) > 0 
+plotshape(long, style=shape.labelup, location=location.belowbar, color=color.new(#0ef80e, 0), size=size.small, text='Buy', textcolor=color.new(color.white, 0)) 
+plotshape(short, style=shape.labeldown, location=location.abovebar, color=color.new(#cc1313, 0), size=size.small, text='Sell', textcolor=color.new(color.white, 0))
+
+//Alert
+TAKE_LONG = "{{ticker}} 5M chart_with_upwards_trend TAKE_LONG here Price ${{open}}{{timenow}}"
+TAKE_SHORT = "{{ticker}} 5M chart_with_downwards_trend TAKE_SHORT Price ${{open}}{{timenow}}"
+Close_LONG = "{{ticker}} 5M chart_reversing_upwards_trend Close_LONG Price ${{open}}{{timenow}}"
+Close_SHORT = "{{ticker}} 5M chart_reversing_downwards_trend Close_SHORT Price ${{open}}{{timenow}}"
+if long 
+    alert(message= TAKE_LONG)
+if short 
+    alert(message= TAKE_SHORT)
+if closelong
+    alert(message= Close_LONG)
+if closeshort
+    alert(message = Close_SHORT)
+// Chart Properties
+testStartYear = input(2022, 'Backtest Start Year')
+testStartMonth = input(11, 'Backtest Start Month')
+testStartDay = input(1, 'Backtest Start Day')
+testPeriodStart = timestamp(testStartYear, testStartMonth, testStartDay, 0, 0)
+
+testStopYear = input(2023, 'Backtest Stop Year')
+testStopMonth = input(12, 'Backtest Stop Month')
+testStopDay = input(30, 'Backtest Stop Day')
+testPeriodStop = timestamp(testStopYear, testStopMonth, testStopDay, 0, 0)
+
+// A switch to control background coloring of the test period
+testPeriodBackground = input(title='Color Background?', defval=true)
+testPeriodBackgroundColor = testPeriodBackground and time >= testPeriodStart and time <= testPeriodStop ? #6c6f6c : na
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop ? true : false
+
+if long and testPeriod()
+    strategy.entry(id='long', direction=strategy.long, qty=1)
+
+strategy.close(id='long', comment='long close', when=ta.change(direction) > 0)
+
+if short and testPeriod()
+    strategy.entry(id='short', direction=strategy.short, qty=1)
+
+strategy.close(id='short', comment='short close', when=ta.change(direction) < 0)
+
+
